@@ -131,5 +131,89 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   }
 
-  window.TarjetaQR = { generar: generar, colores: colores, aCanvas: aCanvas, aSVG: aSVG, bajar: bajar };
+  // Logo en blanco para dibujarlo sobre el fondo de color. La imagen debe venir con crossorigin:
+  // si el navegador la marca como contaminada no se podría exportar, y entonces se deja por fuera.
+  function logoBlanco(img) {
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    var c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    var g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#FFFFFF';
+    g.fillRect(0, 0, c.width, c.height);
+    try { g.getImageData(0, 0, 1, 1); } catch (e) { return null; }
+    return c;
+  }
+
+  // Fondo para la pantalla de bloqueo, en 1170 × 2532 (iPhone; en Android se ajusta solo).
+  // El QR va en la franja central: arriba quedan el reloj y los widgets, abajo los accesos rápidos.
+  function fondoPantalla(q, col, datos) {
+    var W = 1170, H = 2532, lado = 700;
+    var x = (W - lado) / 2, y = 1090;
+    var lienzo = document.createElement('canvas');
+    lienzo.width = W;
+    lienzo.height = H;
+    var g = lienzo.getContext('2d');
+
+    g.fillStyle = datos.fondo;
+    g.fillRect(0, 0, W, H);
+
+    if (datos.logo) {
+      var ancho = 380, alto = ancho * datos.logo.height / datos.logo.width;
+      g.drawImage(datos.logo, (W - ancho) / 2, y - 110 - alto, ancho, alto);
+    }
+
+    g.beginPath();
+    redondeado(g, x - 40, y - 40, lado + 80, lado + 80, 80);
+    g.lineWidth = 10;
+    g.strokeStyle = datos.acento;
+    g.stroke();
+    g.beginPath();
+    redondeado(g, x - 22, y - 22, lado + 44, lado + 44, 60);
+    g.fillStyle = '#FFFFFF';
+    g.fill();
+    g.drawImage(aCanvas(q, col, lado), x, y);
+
+    g.textAlign = 'center';
+    g.fillStyle = '#FFFFFF';
+    g.font = '900 76px Lato, sans-serif';
+    g.fillText(datos.nombre, W / 2, y + lado + 180);
+    g.font = '700 34px Lato, sans-serif';
+    g.fillStyle = datos.suave;
+    if ('letterSpacing' in g) g.letterSpacing = '7px';
+    g.fillText(datos.cargo.toUpperCase(), W / 2, y + lado + 245);
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.font = '400 38px Lato, sans-serif';
+    g.fillStyle = '#FFFFFF';
+    g.fillText('Escanea para guardar mi contacto', W / 2, y + lado + 320);
+    return lienzo;
+  }
+
+  // En iPhone la hoja de compartir trae "Guardar imagen", que la manda directo a Fotos
+  // (descargarla la dejaría en Archivos). En Android y en el computador se descarga normal.
+  function guardarImagen(blob, nombre) {
+    if (!blob) return;
+    var esIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (esIOS && window.File && navigator.canShare) {
+      var archivo = new File([blob], nombre, { type: blob.type });
+      if (navigator.canShare({ files: [archivo] })) {
+        navigator.share({ files: [archivo] }).catch(function () {});
+        return;
+      }
+    }
+    bajar(blob, nombre);
+  }
+
+  window.TarjetaQR = {
+    generar: generar,
+    colores: colores,
+    aCanvas: aCanvas,
+    aSVG: aSVG,
+    bajar: bajar,
+    logoBlanco: logoBlanco,
+    fondoPantalla: fondoPantalla,
+    guardarImagen: guardarImagen
+  };
 })();

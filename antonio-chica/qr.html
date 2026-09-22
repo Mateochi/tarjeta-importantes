@@ -23,7 +23,7 @@
 <body>
 <main class="qr-pantalla">
   <p class="aviso" id="aviso-local" hidden></p>
-  <img class="logo-blanco" src="https://www.importantes.co/cdn/shop/files/manual-IMPORTANTES-26_7dac4d9c-ef88-4c66-962d-1281a2285280.png?v=1730487109&amp;width=600" alt="Importantes" width="600" height="192">
+  <img class="logo-blanco" id="logo" src="https://www.importantes.co/cdn/shop/files/manual-IMPORTANTES-26_7dac4d9c-ef88-4c66-962d-1281a2285280.png?v=1730487109&amp;width=600" crossorigin="anonymous" alt="Importantes" width="600" height="192">
   <div class="marco-qr" id="marco-qr">
     <img id="qr" alt="Código QR de la tarjeta digital de Antonio Chica" width="1024" height="1024">
   </div>
@@ -31,13 +31,19 @@
   <p class="qr-cargo">Asesor Comercial</p>
   <p class="qr-instruccion">Escanea con la cámara para ver y guardar mi contacto</p>
 
-  <div class="qr-botones">
-    <button class="boton boton-claro" id="bajar-png" type="button">Descargar imagen</button>
-    <button class="boton boton-claro" id="bajar-svg" type="button">SVG para imprimir</button>
-    <a class="boton boton-claro" id="ver-tarjeta" href="./">Ver mi tarjeta</a>
-  </div>
   <button class="boton boton-acento" id="instalar" type="button" hidden>Instalar en el celular</button>
-  <p class="qr-ayuda">Para tenerlo a un toque, abre esta página en tu celular y toca <b>Compartir → Agregar a inicio</b> (iPhone) o <b>⋮ → Agregar a la pantalla principal</b> (Android).</p>
+  <p class="qr-ayuda">Agrégalo a la pantalla de inicio para abrirlo con un toque: en iPhone, <b>Compartir → Agregar a inicio</b>; en Android, <b>⋮ → Agregar a la pantalla principal</b>.</p>
+
+  <details class="opciones" id="opciones">
+    <summary>Más opciones</summary>
+    <div class="qr-botones">
+      <button class="boton boton-claro" id="bajar-fondo" type="button">Fondo de pantalla</button>
+      <button class="boton boton-claro" id="bajar-png" type="button">Descargar QR</button>
+      <button class="boton boton-claro" id="bajar-svg" type="button">SVG para imprimir</button>
+      <a class="boton boton-claro" id="ver-tarjeta" href="./" target="_blank" rel="noopener">Ver mi tarjeta</a>
+    </div>
+    <p class="qr-nota">El fondo de pantalla deja el QR en el centro de la pantalla de bloqueo, lejos del reloj: prendes el celular y ya se puede escanear.</p>
+  </details>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
@@ -47,6 +53,9 @@
   // Dirección pública de la tarjeta (GitHub Pages): el QR apunta ahí aunque esta página se abra desde XAMPP.
   // Si algún día pasa a un dominio propio, se cambia aquí. Vacío = la carpeta donde está esta página.
   var URL_PUBLICA = 'https://mateochi.github.io/tarjeta-importantes/antonio-chica/';
+  var NOMBRE = 'Antonio Chica';
+  var CARGO = 'Asesor Comercial';
+  var ARCHIVO = 'antonio-chica';
 
   var tema = document.documentElement.getAttribute('data-tema');
   var destino = URL_PUBLICA || new URL('./', location.href).href;
@@ -61,10 +70,13 @@
     aviso.hidden = false;
   }
 
+  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    document.documentElement.classList.add('instalada');
+  }
+
   if (typeof qrcode === 'undefined') {
     document.getElementById('marco-qr').innerHTML = '<p class="qr-error">No se pudo generar el QR. Revisa la conexión a internet y recarga.</p>';
-    document.getElementById('bajar-png').hidden = true;
-    document.getElementById('bajar-svg').hidden = true;
+    document.getElementById('opciones').hidden = true;
   } else {
     var q = TarjetaQR.generar(destino);
     var col = TarjetaQR.colores();
@@ -73,17 +85,63 @@
     img.src = lienzo.toDataURL('image/png');
     img.setAttribute('data-destino', destino);
 
+    // Las imágenes se preparan al abrir "Más opciones", para que al tocar el botón se guarden de una:
+    // en iPhone, compartir solo funciona si se llama justo después del toque.
+    var listas = {};
+    var promesas = null;
+    function aBlob(c) { return new Promise(function (ok) { c.toBlob(ok, 'image/png'); }); }
+    function preparar() {
+      if (promesas) return promesas;
+      var s = getComputedStyle(document.documentElement);
+      var fuentes = ['900 76px Lato', '700 34px Lato', '400 38px Lato'].map(function (f) { return document.fonts.load(f); });
+      promesas = {
+        qr: aBlob(lienzo),
+        fondo: Promise.all(fuentes).catch(function () {}).then(function () {
+          return aBlob(TarjetaQR.fondoPantalla(q, col, {
+            nombre: NOMBRE,
+            cargo: CARGO,
+            fondo: s.getPropertyValue('--primario').trim(),
+            acento: s.getPropertyValue('--acento').trim(),
+            suave: s.getPropertyValue('--sobre-primario-suave').trim(),
+            logo: TarjetaQR.logoBlanco(document.getElementById('logo'))
+          }));
+        })
+      };
+      promesas.qr.then(function (b) { listas.qr = b; });
+      promesas.fondo.then(function (b) { listas.fondo = b; });
+      return promesas;
+    }
+    function guardar(tipo, nombre) {
+      if (listas[tipo]) { TarjetaQR.guardarImagen(listas[tipo], nombre); return; }
+      preparar()[tipo].then(function (b) { TarjetaQR.guardarImagen(b, nombre); });
+    }
+
+    document.getElementById('opciones').addEventListener('toggle', function (e) {
+      if (e.target.open) preparar();
+    });
+    document.getElementById('bajar-fondo').addEventListener('click', function () {
+      guardar('fondo', 'fondo-qr-' + ARCHIVO + '.png');
+    });
     document.getElementById('bajar-png').addEventListener('click', function () {
-      lienzo.toBlob(function (b) { TarjetaQR.bajar(b, 'qr-antonio-chica.png'); }, 'image/png');
+      guardar('qr', 'qr-' + ARCHIVO + '.png');
     });
     document.getElementById('bajar-svg').addEventListener('click', function () {
-      TarjetaQR.bajar(new Blob([TarjetaQR.aSVG(q, col)], { type: 'image/svg+xml' }), 'qr-antonio-chica.svg');
+      TarjetaQR.bajar(new Blob([TarjetaQR.aSVG(q, col)], { type: 'image/svg+xml' }), 'qr-' + ARCHIVO + '.svg');
     });
   }
 
-  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
-    document.documentElement.classList.add('instalada');
+  // Mientras se muestra el QR la pantalla no se apaga (si el navegador lo permite)
+  var bloqueo = null;
+  function mantenerEncendida() {
+    if (bloqueo || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+    navigator.wakeLock.request('screen').then(function (b) {
+      bloqueo = b;
+      b.addEventListener('release', function () { bloqueo = null; });
+    }).catch(function () {});
   }
+  document.addEventListener('visibilitychange', mantenerEncendida);
+  document.addEventListener('pointerdown', mantenerEncendida);
+  mantenerEncendida();
 
   var instalar = document.getElementById('instalar');
   var diferido = null;
