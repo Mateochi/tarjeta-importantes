@@ -1,0 +1,13 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Chica;Antonio;;;
+FN:Antonio Chica
+ORG:Importantes
+TITLE:Asesor Comercial
+TEL;TYPE=CELL,VOICE:+573112211308
+TEL;TYPE=WORK,VOICE:+576014191836
+EMAIL;TYPE=INTERNET,WORK:antoniochica69@hotmail.com
+URL:https://www.importantes.co
+ADR;TYPE=WORK:;Cuarto piso;Calle 14 # 55-26;Bogotá;;;Colombia
+NOTE:Importadora de repuestos automotores.
+END:VCARD

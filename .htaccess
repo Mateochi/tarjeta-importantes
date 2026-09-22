@@ -1,0 +1,7 @@
+# No mostrar el listado de carpetas (que nadie vea todas las tarjetas)
+Options -Indexes
+
+# Que el celular reconozca el .vcf como contacto
+AddType text/vcard .vcf
+AddCharset UTF-8 .vcf
+AddType application/manifest+json .webmanifest

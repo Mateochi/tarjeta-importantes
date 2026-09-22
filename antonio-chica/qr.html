@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es" class="pagina-qr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi QR · Antonio Chica</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#102070">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icono-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mi QR">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>if (/[?&]tema=tarjeta\b/.test(location.search)) document.documentElement.setAttribute('data-tema', 'tarjeta');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&amp;display=swap">
+<link rel="stylesheet" href="../assets/tarjeta.css">
+</head>
+<body>
+<main class="qr-pantalla">
+  <p class="aviso" id="aviso-local" hidden></p>
+  <img class="logo-blanco" src="https://www.importantes.co/cdn/shop/files/manual-IMPORTANTES-26_7dac4d9c-ef88-4c66-962d-1281a2285280.png?v=1730487109&amp;width=600" alt="Importantes" width="600" height="192">
+  <div class="marco-qr" id="marco-qr">
+    <img id="qr" alt="Código QR de la tarjeta digital de Antonio Chica" width="1024" height="1024">
+  </div>
+  <p class="qr-nombre">Antonio Chica</p>
+  <p class="qr-cargo">Asesor Comercial</p>
+  <p class="qr-instruccion">Escanea con la cámara para ver y guardar mi contacto</p>
+
+  <div class="qr-botones">
+    <button class="boton boton-claro" id="bajar-png" type="button">Descargar imagen</button>
+    <button class="boton boton-claro" id="bajar-svg" type="button">SVG para imprimir</button>
+    <a class="boton boton-claro" id="ver-tarjeta" href="./">Ver mi tarjeta</a>
+  </div>
+  <button class="boton boton-acento" id="instalar" type="button" hidden>Instalar en el celular</button>
+  <p class="qr-ayuda">Para tenerlo a un toque, abre esta página en tu celular y toca <b>Compartir → Agregar a inicio</b> (iPhone) o <b>⋮ → Agregar a la pantalla principal</b> (Android).</p>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="../assets/qr.js"></script>
+<script>
+(function () {
+  // Dirección pública de la tarjeta (GitHub Pages): el QR apunta ahí aunque esta página se abra desde XAMPP.
+  // Si algún día pasa a un dominio propio, se cambia aquí. Vacío = la carpeta donde está esta página.
+  var URL_PUBLICA = 'https://mateochi.github.io/tarjeta-importantes/antonio-chica/';
+
+  var tema = document.documentElement.getAttribute('data-tema');
+  var destino = URL_PUBLICA || new URL('./', location.href).href;
+  if (tema) destino += (destino.indexOf('?') < 0 ? '?' : '&') + 'tema=' + tema;
+  if (tema) document.getElementById('ver-tarjeta').href = './?tema=' + tema;
+
+  var local = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (local && !URL_PUBLICA) {
+    var aviso = document.getElementById('aviso-local');
+    aviso.textContent = 'Este QR apunta a ' + destino + ', que solo existe en este computador. ' +
+      'Para probarlo con otro celular, abre esta página usando la IP del PC (misma red Wi-Fi) o publícala en un hosting.';
+    aviso.hidden = false;
+  }
+
+  if (typeof qrcode === 'undefined') {
+    document.getElementById('marco-qr').innerHTML = '<p class="qr-error">No se pudo generar el QR. Revisa la conexión a internet y recarga.</p>';
+    document.getElementById('bajar-png').hidden = true;
+    document.getElementById('bajar-svg').hidden = true;
+  } else {
+    var q = TarjetaQR.generar(destino);
+    var col = TarjetaQR.colores();
+    var lienzo = TarjetaQR.aCanvas(q, col, 1024);
+    var img = document.getElementById('qr');
+    img.src = lienzo.toDataURL('image/png');
+    img.setAttribute('data-destino', destino);
+
+    document.getElementById('bajar-png').addEventListener('click', function () {
+      lienzo.toBlob(function (b) { TarjetaQR.bajar(b, 'qr-antonio-chica.png'); }, 'image/png');
+    });
+    document.getElementById('bajar-svg').addEventListener('click', function () {
+      TarjetaQR.bajar(new Blob([TarjetaQR.aSVG(q, col)], { type: 'image/svg+xml' }), 'qr-antonio-chica.svg');
+    });
+  }
+
+  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    document.documentElement.classList.add('instalada');
+  }
+
+  var instalar = document.getElementById('instalar');
+  var diferido = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    diferido = e;
+    instalar.hidden = false;
+  });
+  instalar.addEventListener('click', function () {
+    if (!diferido) return;
+    diferido.prompt();
+    diferido = null;
+    instalar.hidden = true;
+  });
+
+  // Solo funciona con HTTPS (o localhost); por IP local sin HTTPS simplemente no se registra
+  if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>

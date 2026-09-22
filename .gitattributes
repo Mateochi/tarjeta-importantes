@@ -1,0 +1,2 @@
+# El .vcf debe conservar los saltos CRLF que pide la norma vCard
+*.vcf -text
